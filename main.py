@@ -68,7 +68,7 @@ def change_name(name):
         return name
 
 def add_to_csv(ARR_name, ARR_text, ARR_country, ARR_url):
-    dataframe = pd.Dataframe({
+    dataframe = pd.DataFrame({
         "name":ARR_name,
         "text":ARR_text,
         "country":ARR_country,
