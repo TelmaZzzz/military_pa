@@ -10,17 +10,14 @@ from functools import wraps
 PREFIX = "https://en.wikipedia.org"
 logging.getLogger().setLevel(logging.INFO)
 requests.adapters.DEFAULT_RETRIES = 5
-ARR_name = []
-ARR_text = []
-ARR_country = []
-ARR_url = []
 
 def error_wrapper(func):
-    try:
-        func()
-    except Exception as e:
-        logging.warning(e)
-    return func
+    def inner(*args):
+        try:
+            func(*args)
+        except Exception as e:
+            logging.warning(e)
+    return inner
 
 def wikipedia_pa(url):
     while True:
@@ -28,7 +25,7 @@ def wikipedia_pa(url):
             req = requests.get(url=url).text
             return BS(req, 'html.parser')
         except Exception as e:
-            logging.info('error_msg is:{} try url:{} again in 1s.'.format(e, url))
+            logging.warning('error_msg is:{} try url:{} again in 1s.'.format(e, url))
             time.sleep(1)
 
 def get_text(url):
@@ -70,8 +67,21 @@ def change_name(name):
     else:
         return name
 
+def add_to_csv(ARR_name, ARR_text, ARR_country, ARR_url):
+    dataframe = pd.Dataframe({
+        "name":ARR_name,
+        "text":ARR_text,
+        "country":ARR_country,
+        "url":ARR_url
+    })
+    dataframe.to_csv("./gen.csv", mode="a", header=False, index=False, sep=",", encoding="utf-8")
+
 # @error_wrapper
 def gen_country_weapons(url):
+    ARR_name = []
+    ARR_text = []
+    ARR_country = []
+    ARR_url = []
     html = wikipedia_pa(url)
     context_div = html.find("div", class_="mw-parser-output")
     context_div = list(context_div)
@@ -93,21 +103,26 @@ def gen_country_weapons(url):
                         continue
                 except:
                     continue
+                logging.info("current progress is {}".format(li.text))
                 ARR_name.append(li.text)
                 ARR_text.append(text)
                 ARR_country.append(country)
                 ARR_url.append(PREFIX + href)
-                print(li.text)
                 # ARR.append({
                 #     "name":li.text,
                 #     "text":text,
                 #     "country":country,
                 #     "url":PREFIX + href
                 # })
+    add_to_csv(ARR_name, ARR_text, ARR_country, ARR_url)
     logging.info("Task finished... url is :{}".format(url))
 
 # @error_wrapper
 def gen_ul_weapons(url, start_ul):
+    ARR_name = []
+    ARR_text = []
+    ARR_country = []
+    ARR_url = []
     html = wikipedia_pa(url)
     context_div = html.find("div", class_="mw-parser-output")
     ul_list = context_div.find_all("ul")
@@ -123,6 +138,7 @@ def gen_ul_weapons(url, start_ul):
                     continue
             except:
                 continue
+            logging.info("current progress is {}".format(change_name(li.text)))
             ARR_name.append(change_name(li.text))
             ARR_text.append(text)
             ARR_country.append(get_country(li.text))
@@ -133,10 +149,15 @@ def gen_ul_weapons(url, start_ul):
             #     "country":get_country(li.text),
             #     "url":PREFIX + href
             # })
+    add_to_csv(ARR_name, ARR_text, ARR_country, ARR_url)
     logging.info("Task finished... url is :{}".format(url))
 
 # @error_wrapper
 def gen_tabel_wwapons(url, name_index, country_index):
+    ARR_name = []
+    ARR_text = []
+    ARR_country = []
+    ARR_url = []
     html = wikipedia_pa(url)
     context_div = html.find("div", class_="mw-parser-output")
     table_list = context_div.find_all("table")
@@ -153,6 +174,7 @@ def gen_tabel_wwapons(url, name_index, country_index):
                     continue
             except:
                 continue
+            logging.info("current progress is {}".format(td_list[name_index].text))
             ARR_name.append(td_list[name_index].text)
             ARR_text.append(text)
             ARR_country.append(str(td_list[country_index].text).strip())
@@ -163,9 +185,11 @@ def gen_tabel_wwapons(url, name_index, country_index):
             #     "country":str(td_list[country_index].text).strip(),
             #     "url":PREFIX + href
             # })
+    add_to_csv(ARR_name, ARR_text, ARR_country, ARR_url)    
     logging.info("Task finished... url is :{}".format(url))
 
 if __name__ == '__main__':
+    logging.info("Start ...")
     gen_country_weapons("https://en.wikipedia.org/wiki/List_of_anti-aircraft_weapons")
     gen_country_weapons("https://en.wikipedia.org/wiki/List_of_orbital_launch_systems")
     gen_country_weapons("https://en.wikipedia.org/wiki/List_of_sounding_rockets")
@@ -191,14 +215,7 @@ if __name__ == '__main__':
     gen_tabel_wwapons("https://en.wikipedia.org/wiki/List_of_blow-forward_firearms", 0, 4)
     gen_tabel_wwapons("https://en.wikipedia.org/wiki/List_of_delayed-blowback_firearms", 0, 4)
     gen_tabel_wwapons("https://en.wikipedia.org/wiki/List_of_military_rockets", 0, 2)
-    dataframe = pd.Dataframe({
-        "name":ARR_name,
-        "text":ARR_text,
-        "country":ARR_country,
-        "url":ARR_url
-    })
-    dataframe.to_csv("gen.csv", sep=",")
-
+    logging.info("End ...")
     # print(get_text("https://en.wikipedia.org/wiki/Air_Defense_Anti-Tank_System"))
     # print(get_text("https://en.wikipedia.org/wiki/RBS_70"))
     
